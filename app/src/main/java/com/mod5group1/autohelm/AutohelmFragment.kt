@@ -27,6 +27,10 @@ class AutohelmFragment : Fragment() {
     private val viewModel: MainActivity.AutohelmViewModel by activityViewModels()
     private var movingCompass = false
 
+    //Not proud of this mess but eh
+    private var startRotation = 0f
+    private var tapStartRotation = 0f
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -99,15 +103,29 @@ class AutohelmFragment : Fragment() {
 
         compass.setOnTouchListener { _, event ->
             when (event.action) {
-                ACTION_DOWN -> movingCompass = true
-                ACTION_UP -> movingCompass = false
-                ACTION_MOVE -> {
-                    val newTrajectory = kotlin.math.atan2(
+                ACTION_DOWN -> {
+                    movingCompass = true
+                    startRotation = compass.rotation
+                    tapStartRotation = kotlin.math.atan2(
                         compass.pivotY - event.rawY,
                         compass.pivotX - event.rawX
                     ) * 180f / PI.toFloat()
+                }
+                ACTION_UP -> movingCompass = false
+                ACTION_MOVE -> {
+                    var newTrajectory = kotlin.math.atan2(
+                        compass.pivotY - event.rawY,
+                        compass.pivotX - event.rawX
+                    ) * 180f / PI.toFloat()
+                    newTrajectory += startRotation - tapStartRotation
 
-                    trajectoryField.setText(String.format("%.2f", newTrajectory))
+                    while (newTrajectory < -180) newTrajectory += 360
+                    while (newTrajectory > 180) newTrajectory -= 360
+
+                    trajectoryField.setText(
+                        String.format("%.2f", newTrajectory)
+                    )
+
                     compass.rotation = newTrajectory
                 }
             }

@@ -32,7 +32,7 @@
         android:id="@+id/compassBackground"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:src="@drawable/compassbackground"
+        android:src="@drawable/compassbackgroundfilled"
         app:layout_constraintBottom_toBottomOf="@+id/compassForeground"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -42,15 +42,11 @@
         android:id="@+id/compassForeground"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:scaleX="0.5"
-        android:scaleY="0.5"
         android:src="@drawable/compassforeground"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="1.0" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <Button
         android:id="@+id/resetTrajectory"
@@ -76,12 +72,13 @@
         android:id="@+id/trajectoryField"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
         android:ems="10"
         android:fontFamily="sans-serif-black"
         android:inputType="numberSigned|number"
         android:textSize="30sp"
-        app:layout_constraintBottom_toBottomOf="@+id/compassBackground"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/compassBackground" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
