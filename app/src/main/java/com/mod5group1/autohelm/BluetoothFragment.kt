@@ -1,4 +1,4 @@
-package com.mod5group1.autohelm
+ package com.mod5group1.autohelm
 
 import android.Manifest
 import android.bluetooth.BluetoothDevice
@@ -8,16 +8,20 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.content.pm.PackageManager.PERMISSION_DENIED
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import com.google.android.material.snackbar.Snackbar
+import java.lang.System.*
+import java.util.*
 
 /**
  * A simple [Fragment] subclass.
@@ -38,9 +42,71 @@ class BluetoothFragment : Fragment() {
         val bluetoothOutput = view.findViewById<TextView>(R.id.bluetoothOutput)
 
 
+        // Register for broadcasts when a device is discovered.
+        val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
+        requireActivity().registerReceiver(receiver, filter)
         val connectButton = view.findViewById<Button>(R.id.connectButton)
         connectButton.setOnClickListener {
-            viewModel.setConnectBluetooth(true)
+            //Array of necessary permissions
+            val permissions = arrayOf(
+                Manifest.permission.BLUETOOTH,
+//                AppCompatActivity.LOCATION_SERVICE,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+//                AppCompatActivity.BLUETOOTH_SERVICE,
+                Manifest.permission.BLUETOOTH_ADMIN,
+//                Manifest.permission.BLUETOOTH_CONNECT,
+//                Manifest.permission.BLUETOOTH_SCAN,
+            )
+            //Request the permissions
+            requireActivity().requestPermissions(permissions, 0)
+            val hasSystemFeature =
+                requireActivity().packageManager.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH)
+            for (p in permissions) {
+                val permission = requireActivity().checkSelfPermission(p)
+                if (permission == PERMISSION_DENIED) {
+                    Snackbar.make(
+                        view.findViewById(android.R.id.content),
+                        "No permissions????? :c",
+                        Snackbar.LENGTH_LONG
+                    ).show()
+                    return@setOnClickListener
+                }
+            }
+//            val anyDenied =
+//                permissions.map { requireActivity().checkSelfPermission(it) }
+//                    .any { it == PackageManager.PERMISSION_DENIED }
+//
+//            if (anyDenied) {
+//                Snackbar.make(
+//                    view.findViewById(android.R.id.content),
+//                    "No permissions????? :c",
+//                    Snackbar.LENGTH_LONG
+//                ).show()
+//                return@setOnClickListener
+//            }
+            val bluetoothManager =
+                requireContext().getSystemService(AppCompatActivity.BLUETOOTH_SERVICE) as BluetoothManager
+            val bluetoothAdapter = bluetoothManager.adapter
+            if (bluetoothAdapter == null) {
+                Snackbar.make(
+                    view.findViewById(android.R.id.content),
+                    "Doesn't look like bluetooth is working :thinking:",
+                    Snackbar.LENGTH_LONG
+                ).show()
+                return@setOnClickListener
+            }
+            val pairedDevices: Set<BluetoothDevice> = bluetoothAdapter.bondedDevices
+            if (!pairedDevices.any { it.name == "HC-05" }) {
+                Snackbar.make(
+                    view.findViewById(android.R.id.content),
+                    "Doesn't look like you've paired to the autohelm yet. You should do that first :)",
+                    Snackbar.LENGTH_LONG
+                ).show()
+                return@setOnClickListener
+            }
+
+
+            bluetoothAdapter.startDiscovery()
         }
 
         viewModel.currentTrajectory.observe(requireActivity()) {
@@ -64,12 +130,16 @@ class BluetoothFragment : Fragment() {
                     if (device.name == "HC-05") {
                         val bluetoothManager =
                             context.getSystemService(AppCompatActivity.BLUETOOTH_SERVICE) as BluetoothManager
-                        bluetoothManager.adapter.cancelDiscovery()
+
 
                         val bluetoothSocket =
-                            device.createRfcommSocketToServiceRecord(device.uuids[0].uuid)
+                            device.createInsecureRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"))
+                        Thread.sleep(500)
                         bluetoothSocket.connect()
+                        Thread.sleep(500)
+
                         viewModel.setBluetoothSocket(bluetoothSocket)
+                        bluetoothManager.adapter.cancelDiscovery()
                     }
                 }
             }

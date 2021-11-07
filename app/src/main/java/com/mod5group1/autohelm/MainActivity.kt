@@ -55,60 +55,6 @@ class MainActivity : AppCompatActivity() {
         }
 
 
-        // Register for broadcasts when a device is discovered.
-        val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
-        registerReceiver(receiver, filter)
-
-
-        viewModel.connectBluetooth.observe(this) {
-            if (!it) return@observe
-
-            viewModel.setConnectBluetooth(false)
-
-            val permissions = arrayOf(
-                BLUETOOTH,
-                LOCATION_SERVICE,
-                ACCESS_COARSE_LOCATION,
-                ACCESS_FINE_LOCATION,
-                BLUETOOTH_SERVICE
-            )
-            requestPermissions(permissions, 0)
-
-            val anyDenied =
-                permissions.map { checkSelfPermission(it) }
-                    .all { it == PackageManager.PERMISSION_DENIED }
-
-            if (anyDenied) {
-                Snackbar.make(
-                    findViewById(android.R.id.content),
-                    "No permissions????? :c",
-                    Snackbar.LENGTH_LONG
-                ).show()
-                return@observe
-            }
-            val bluetoothManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
-            val bluetoothAdapter = bluetoothManager.adapter
-            if (bluetoothAdapter == null) {
-                Snackbar.make(
-                    findViewById(android.R.id.content),
-                    "Doesn't look like bluetooth is working :thinking:",
-                    Snackbar.LENGTH_LONG
-                ).show()
-                return@observe
-            }
-            val pairedDevices: Set<BluetoothDevice> = bluetoothAdapter.bondedDevices
-            if (!pairedDevices.any { it.name == "HC-05" }) {
-                Snackbar.make(
-                    findViewById(android.R.id.content),
-                    "Doesn't look like you've paired to the autohelm yet. You should do that first :)",
-                    Snackbar.LENGTH_LONG
-                ).show()
-                return@observe
-            }
-            bluetoothAdapter.startDiscovery()
-        }
-
-
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNav)
         bottomNav.setOnItemSelectedListener {
             val selectedFragment: Fragment? = when (it.itemId) {
@@ -163,13 +109,11 @@ class MainActivity : AppCompatActivity() {
         private val mutableCurrentTrajectory = MutableLiveData<Float>()
         private val mutableBluetoothSocket = MutableLiveData<BluetoothSocket>()
         private val mutableConnectionThread = MutableLiveData<HandleConnectionThread>()
-        private val mutableConnectBluetooth = MutableLiveData<Boolean>()
 
         val plannedTrajectory: LiveData<Float> get() = mutablePlannedTrajectory
         val currentTrajectory: LiveData<Float> get() = mutableCurrentTrajectory
         val bluetoothSocket: LiveData<BluetoothSocket> get() = mutableBluetoothSocket
         val connectionThread: LiveData<HandleConnectionThread> get() = mutableConnectionThread
-        val connectBluetooth: LiveData<Boolean> get() = mutableConnectBluetooth
 
         fun setPlannedTrajectory(trajectory: Float) {
             mutablePlannedTrajectory.value = trajectory
@@ -186,35 +130,6 @@ class MainActivity : AppCompatActivity() {
         fun setConnectionThread(thread: HandleConnectionThread) {
             mutableConnectionThread.value = thread
         }
-
-        fun setConnectBluetooth(value: Boolean) {
-            mutableConnectBluetooth.value = value
-        }
     }
 
-
-    // Handle found bluetooth devices
-    private val receiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            when (intent.action) {
-                BluetoothDevice.ACTION_FOUND -> {
-                    val device: BluetoothDevice =
-                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE) ?: return
-
-                    if (device.name != null) println("Found bluetooth device: ${device.name}")
-
-                    if (device.name == "HC-05") {
-                        val bluetoothManager =
-                            context.getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
-                        bluetoothManager.adapter.cancelDiscovery()
-
-                        val bluetoothSocket =
-                            device.createRfcommSocketToServiceRecord(device.uuids[0].uuid)
-                        bluetoothSocket.connect()
-                        viewModel.setBluetoothSocket(bluetoothSocket)
-                    }
-                }
-            }
-        }
-    }
 }
