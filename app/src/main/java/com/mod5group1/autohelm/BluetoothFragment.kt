@@ -1,4 +1,4 @@
- package com.mod5group1.autohelm
+package com.mod5group1.autohelm
 
 import android.Manifest
 import android.bluetooth.BluetoothDevice
@@ -134,9 +134,7 @@ class BluetoothFragment : Fragment() {
 
                         val bluetoothSocket =
                             device.createInsecureRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"))
-                        Thread.sleep(500)
                         bluetoothSocket.connect()
-                        Thread.sleep(500)
 
                         viewModel.setBluetoothSocket(bluetoothSocket)
                         bluetoothManager.adapter.cancelDiscovery()

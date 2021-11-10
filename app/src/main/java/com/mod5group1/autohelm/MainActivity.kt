@@ -1,14 +1,6 @@
 package com.mod5group1.autohelm
 
-import android.Manifest.permission.*
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -18,10 +10,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.snackbar.Snackbar
-import java.io.BufferedReader
-import java.io.BufferedWriter
-import java.io.InputStreamReader
-import java.io.OutputStreamWriter
+import kotlin.math.absoluteValue
+import kotlin.math.pow
 
 class MainActivity : AppCompatActivity() {
 
@@ -44,7 +34,8 @@ class MainActivity : AppCompatActivity() {
             println("New planned trajectory: $it")
             val connectionThread = viewModel.connectionThread.value
             if (connectionThread != null) {
-                connectionThread.sendMessage("trajectory $it")
+//                connectionThread.sendMessage("trajectory $it")
+                connectionThread.sendInt(it.toInt())
             } else {
                 Snackbar.make(
                     findViewById(android.R.id.content),
@@ -78,29 +69,90 @@ class MainActivity : AppCompatActivity() {
 
     inner class HandleConnectionThread(private val socket: BluetoothSocket) : Thread() {
 
-        private val inputReader = BufferedReader(InputStreamReader(socket.inputStream))
-        private val outputReader = BufferedWriter(OutputStreamWriter(socket.outputStream))
 
         override fun run() {
             socket.use {
-                while (true) {
-                    while (inputReader.ready()) {
-                        val message = inputReader.readLine()
-                        println("Recieved message from bluetooth connection: $message")
+                outer@ while (true) {
+                    val resultArray = Array(8) { 0 }
+                    val read = socket.inputStream.read()
 
-                        if (message.startsWith("trajectory ")) {
-                            val trajectory = message.split("trajectory ")[0].toFloat()
-                            viewModel.setCurrentTrajectory(trajectory)
+                    println("RECEIVED INT $read")
+                    var negative = false
+
+                    var readDone = false
+                    reading@ while (!readDone) {
+                        val read1 = socket.inputStream.read()
+                        when (read1) {
+                            48, 255 -> {
+                                readDone = true
+                                negative = false
+                            }
+                            49, 254 -> {
+                                readDone = true
+                                negative = true
+                            }
+                            13, 10 -> continue@reading
+                            else -> {
+                                println("received some cringe numbers")
+                                continue@outer
+                            }
                         }
                     }
+
+
+                    println("RECEIVED NEGATIVITY $negative")
+
+                    for (i in resultArray.indices) {
+                        var readDone = false
+                        reading@ while (!readDone) {
+                            val read1 = socket.inputStream.read()
+                            when (read1) {
+                                48, 255 -> {
+                                    readDone = true
+                                    resultArray[i] = 0
+                                }
+                                49, 254 -> {
+                                    readDone = true
+                                    resultArray[i] = 1
+                                }
+                                13, 10 -> continue@reading
+                                else -> {
+                                    println("received some cringe numbers")
+                                    continue@outer
+                                }
+                            }
+                        }
+                        println("RECEIVED BIT ${resultArray[i]}")
+                    }
+                    // resultArray is now filled, process it.
+                    var result = 0
+                    for ((i, number) in resultArray.withIndex()) {
+                        if (number == 1) {
+                            result += 2.0.pow(i).toInt()
+                        }
+                    }
+                    if (negative) result *= -1
+
+
+                    println("Recieved message from bluetooth connection: $result")
+                    //TODO: HANDLE THIS!!!!!
+
                 }
             }
         }
 
-        fun sendMessage(message: String) {
-            outputReader.write(message)
-            outputReader.newLine()
-            outputReader.flush()
+        fun sendInt(message: Int) {
+            println("Sending message to bluetooth connection: $message")
+
+            socket.outputStream.write(if (message < 0) 1 else 0)
+
+            var messageString = Integer.toBinaryString(message.absoluteValue).padStart(8, '0')
+            println("Sending this in binary to arduino: ${messageString.substring(8 - messageString.length)}")
+
+            for (char in messageString.substring(8 - messageString.length).reversed()) {
+
+                socket.outputStream.write(if (char == '0') 0 else 100)
+            }
         }
     }
 
